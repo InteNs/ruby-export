@@ -26,21 +26,22 @@ data = [
 }]
 
 def build_row(data, headers)
-  data.first.each_with_object([]) do |(attribute, value), row|
-    index = headers.find_index(attribute) if headers.include?(attribute)
+  data.first.each_with_object([]) do |(attr, value), row|
+    if value.is_a? Array
+      value.each do |nested_data|
+        build_row(nested_data, headers)
+      end
+    else
+      puts attr
+      (row ||= [])[headers.find_index(attr)] = value if headers.find_index(attr) != nil
+    end
+  end
 end
 Axlsx::Package.new do |p|
   p.workbook.add_worksheet(name: 'Pie Chart') do |sheet|
     sheet.add_row headers
-    sheet.add_row build_row(data, headers)
+    sheet.add_row(build_row(data, headers))
     # sheet.add_table "A1:C4", :name => 'Build Matrix', :style_info => { :name => "TableStyleMedium23" }
   end
   p.serialize 'testresult.xlsx'
 end
-
-def flatten_hash(hash)
-  hash.each_with_object([]) do |(key, value), result|
-    if value.is_a? Array
-      # do stuff
-    else
-      (result.first ||= {})

@@ -1,7 +1,6 @@
 gem 'axlsx', '~> 2.0.1'
 
 require 'axlsx'
-require 'ostruct'
 require 'pp'
 
 def headers

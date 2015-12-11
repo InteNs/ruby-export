@@ -2,6 +2,7 @@ gem 'axlsx', '~> 2.0.1'
 
 require 'axlsx'
 require 'ostruct'
+require 'pp'
 
 def headers
   [
@@ -25,22 +26,50 @@ data = [
   }]
 }]
 
-def build_row(data, headers)
-  data.first.each_with_object([]) do |(attr, value), row|
-    if value.is_a? Array
-      value.each do |nested_data|
-        build_row(nested_data, headers)
-      end
+def build_rows(attributes)
+  main_row = Array.new(headers.count)
+  attributes.each_with_object([]) do |(attribute, value), rows|
+    if value.is_a?(Array)
+      nested_rows = build_nested_rows(value)
+      main_row = static_merge(main_row, nested_rows.first)
     else
-      puts attr
-      (row ||= [])[headers.find_index(attr)] = value if headers.find_index(attr) != nil
+      add_to_row(main_row, attribute, value)
     end
+  end.unshift(main_row)
+end
+
+def add_to_row(row, attribute, value)
+  row[index_of(attribute) || row.count + 1] = value
+end
+
+def build_matrix(data)
+  data.each_with_object([]) do |attributes, rows|
+    build_rows(attributes).each { |row| rows << row }
   end
 end
+
+def build_nested_rows(value)
+  value.map { |attributes| build_rows(attributes) }.first
+end
+
+def static_merge(array1, array2)
+  array1.zip(array2).map { |xs| xs.compact.first }
+end
+
+def index_of(attribute)
+  headers.find_index(attribute)
+end
+
+def first_iteration?(iteration)
+  iteration == 0
+end
+
 Axlsx::Package.new do |p|
   p.workbook.add_worksheet(name: 'Pie Chart') do |sheet|
     sheet.add_row headers
-    sheet.add_row(build_row(data, headers))
+    build_matrix(data).each do |row_data|
+      sheet.add_row(row_data)
+    end
     # sheet.add_table "A1:C4", :name => 'Build Matrix', :style_info => { :name => "TableStyleMedium23" }
   end
   p.serialize 'testresult.xlsx'
